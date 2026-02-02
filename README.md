@@ -7,3 +7,5 @@ Landing page para Pareto Consulting AI.
 ## Deploy
 
 Push a main → Auto-deploy via GitHub Actions
+
+## Status: Active
