@@ -1,0 +1,47 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/paretoia-deploy
+            
+            # Pull latest code from GitHub
+            if [ -d "landing/.git" ]; then
+              cd landing
+              git pull origin main
+            else
+              rm -rf landing
+              git clone https://github.com/paretoconsultingai/paretoia.git landing
+            fi
+            
+            # Build and deploy
+            docker build -t paretoia-landing ./landing
+            docker rm -f paretoia-landing || true
+            docker run -d --name paretoia-landing \
+              --restart unless-stopped \
+              --network paretoia_paretoia-network \
+              -l 'traefik.enable=true' \
+              -l 'traefik.http.routers.landing.rule=Host(`paretoia.com`) || Host(`www.paretoia.com`)' \
+              -l 'traefik.http.routers.landing.entrypoints=websecure' \
+              -l 'traefik.http.routers.landing.tls.certresolver=letsencrypt' \
+              -l 'traefik.http.services.landing.loadbalancer.server.port=3002' \
+              paretoia-landing
+            
+            echo "✅ Deploy completed successfully!"

@@ -1,0 +1,30 @@
+# ===========================================
+# LANDING PAGE - PARETOIA.COM
+# ===========================================
+# Este archivo se fusiona con el docker-compose principal
+# Ejecutar: docker compose -f docker-compose.yml -f docker-compose.landing.yml up -d
+
+services:
+  landing:
+    build: ./landing
+    container_name: paretoia-landing
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    networks:
+      - paretoia-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.landing.rule=Host(`paretoia.com`) || Host(`www.paretoia.com`)"
+      - "traefik.http.routers.landing.entrypoints=websecure"
+      - "traefik.http.routers.landing.tls.certresolver=letsencrypt"
+      - "traefik.http.services.landing.loadbalancer.server.port=3002"
+      # Redirect www to non-www
+      - "traefik.http.middlewares.www-redirect.redirectregex.regex=^https://www\\.paretoia\\.com/(.*)"
+      - "traefik.http.middlewares.www-redirect.redirectregex.replacement=https://paretoia.com/$${1}"
+      - "traefik.http.middlewares.www-redirect.redirectregex.permanent=true"
+      - "traefik.http.routers.landing.middlewares=www-redirect"
+
+networks:
+  paretoia-network:
+    external: true
